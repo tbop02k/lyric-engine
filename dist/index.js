@@ -2672,7 +2672,15 @@ function kanaToKo(input) {
 }
 var KANA_ONLY = /^[぀-ゟ゠-ヿ]+$/;
 var PARTICLE_READING = { \u306F: "\u308F", \u3078: "\u3048" };
-var kanaReading = (s) => PARTICLE_READING[s] ?? (KANA_ONLY.test(s) ? s : void 0);
+var kanaReading = (s) => {
+  if (PARTICLE_READING[s]) return PARTICLE_READING[s];
+  if (KANA_ONLY.test(s)) return s;
+  const core = s.replace(
+    /^[？！。、，．…‥「」『』（）()!?.,\s]+|[？！。、，．…‥「」『』（）()!?.,\s]+$/gu,
+    ""
+  );
+  return core && KANA_ONLY.test(core) ? core : void 0;
+};
 var HAS_KANJI = /[㐀-鿿]/;
 var hasKanji = (s) => HAS_KANJI.test(s);
 var isKanaCh = (c) => KANA_ONLY.test(c);

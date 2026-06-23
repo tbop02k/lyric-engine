@@ -18,7 +18,7 @@ declare function getYouTubeId(input: string | undefined | null): string | null;
 declare function getEmbedUrl(input: string | undefined | null): string | null;
 declare function kanaToKo(input: string): string;
 declare const KANA_ONLY: RegExp;
-declare const kanaReading: (s: string) => string;
+declare const kanaReading: (s: string) => string | undefined;
 declare const hasKanji: (s: string) => boolean;
 /** 한자에만 후리가나가 오도록 앞뒤 공통 가나(오쿠리가나)를 떼고 한자 중심부만 남김 */
 declare function splitFurigana(surface: string, reading: string): {

@@ -124,8 +124,17 @@ export function kanaToKo(input: string): string {
 /* ---------------- 후리가나 / 읽기 ---------------- */
 export const KANA_ONLY = /^[぀-ゟ゠-ヿ]+$/
 const PARTICLE_READING: Record<string, string> = { は: "わ", へ: "え" }
-export const kanaReading = (s: string) =>
-  PARTICLE_READING[s] ?? (KANA_ONLY.test(s) ? s : undefined)
+export const kanaReading = (s: string): string | undefined => {
+  if (PARTICLE_READING[s]) return PARTICLE_READING[s]
+  if (KANA_ONLY.test(s)) return s
+  // 앞/끝의 문장부호(？！。「」 등)만 떼고 가나만 남으면 그 가나를 읽기로.
+  // (예: "でしょう？" → "でしょう", "よっしゃ！" → "よっしゃ". 한자는 보존)
+  const core = s.replace(
+    /^[？！。、，．…‥「」『』（）()!?.,\s]+|[？！。、，．…‥「」『』（）()!?.,\s]+$/gu,
+    "",
+  )
+  return core && KANA_ONLY.test(core) ? core : undefined
+}
 const HAS_KANJI = /[㐀-鿿]/
 export const hasKanji = (s: string) => HAS_KANJI.test(s)
 const isKanaCh = (c: string) => KANA_ONLY.test(c)
