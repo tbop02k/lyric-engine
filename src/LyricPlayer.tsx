@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -17,7 +18,7 @@ import {
   type LyricToken,
   type LyricLine,
 } from "./lib"
-import { useYouTube } from "./use-youtube"
+import { useYouTube, type YTPlayer } from "./use-youtube"
 
 type Tip = {
   r?: string
@@ -96,6 +97,122 @@ function LayerToggle({
   )
 }
 
+function fmt(s: number) {
+  if (!Number.isFinite(s) || s < 0) s = 0
+  const m = Math.floor(s / 60)
+  const ss = Math.floor(s % 60)
+    .toString()
+    .padStart(2, "0")
+  return `${m}:${ss}`
+}
+
+/** 전체보기에서 가사 카드 최상단에 sticky 로 붙는 미니 재생바 (유튜브와 연동) */
+function PlaybackBar({
+  playerRef,
+  onScrub,
+  onJump,
+}: {
+  playerRef: { current: YTPlayer | null }
+  onScrub?: (sec: number) => void
+  onJump?: () => void
+}) {
+  const [cur, setCur] = useState(0)
+  const [dur, setDur] = useState(0)
+  const [playing, setPlaying] = useState(false)
+  const seekingRef = useRef(false)
+  const valRef = useRef(0)
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const p = playerRef.current
+      if (!p) return
+      if (!seekingRef.current) setCur(p.getCurrentTime?.() ?? 0)
+      setDur(p.getDuration?.() ?? 0)
+      setPlaying((p.getPlayerState?.() ?? -1) === 1)
+    }, 250)
+    return () => window.clearInterval(id)
+  }, [playerRef])
+
+  const toggle = () => {
+    const p = playerRef.current
+    if (!p) return
+    if (playing) p.pauseVideo?.()
+    else p.playVideo?.()
+  }
+  const onSeek = (v: number) => {
+    valRef.current = v
+    setCur(v)
+    playerRef.current?.seekTo?.(v, true)
+  }
+  // 사용자가 직접 바를 놓는 순간에만 가사 스크롤 (유튜브 재생/조작 땐 호출 안 됨)
+  const commitScrub = () => {
+    seekingRef.current = false
+    onScrub?.(valRef.current)
+  }
+
+  return (
+    <div className="sticky top-14 z-10 -mx-6 -mt-6 mb-4 flex items-center gap-3 rounded-t-xl border-b border-border bg-card/95 px-6 py-2.5 backdrop-blur sm:-mx-8 sm:-mt-8 sm:px-8 lg:top-3">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-label={playing ? "일시정지" : "재생"}
+        className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
+      >
+        {playing ? (
+          <svg viewBox="0 0 24 24" className="size-4" fill="currentColor">
+            <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" className="size-4" fill="currentColor">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        )}
+      </button>
+      <span className="w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+        {fmt(cur)}
+      </span>
+      <input
+        type="range"
+        min={0}
+        max={dur || 0}
+        step={0.1}
+        value={Math.min(cur, dur || 0)}
+        onPointerDown={() => (seekingRef.current = true)}
+        onPointerUp={commitScrub}
+        onKeyUp={commitScrub}
+        onChange={(e) => onSeek(Number(e.target.value))}
+        aria-label="재생 위치"
+        className="h-1.5 flex-1 cursor-pointer accent-primary"
+      />
+      <span className="w-9 shrink-0 text-xs tabular-nums text-muted-foreground">
+        {fmt(dur)}
+      </span>
+      {onJump && (
+        <button
+          type="button"
+          onClick={onJump}
+          aria-label="현재 가사로 이동"
+          title="현재 가사로 이동"
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+          >
+            <circle cx="12" cy="12" r="7" />
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+            <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+          </svg>
+        </button>
+      )}
+    </div>
+  )
+}
+
 function Word({
   tok,
   reading,
@@ -157,6 +274,23 @@ export function LyricPlayer({
 
   const lines = withTimings(rawLines, timings)
   const { hostRef, playerRef, ready } = useYouTube(videoId)
+  const lyricsBoxRef = useRef<HTMLDivElement>(null)
+
+  // 커스텀 재생바를 직접 조작했을 때만 해당 가사 줄로 스크롤 (유튜브 조작 시엔 호출 안 함)
+  const scrollToTime = (sec: number) => {
+    const dur = playerRef.current?.getDuration?.() ?? 0
+    const idx = activeIndexAt(lines, sec, dur)
+    if (idx < 0) return
+    const el = lyricsBoxRef.current?.querySelector(`[data-line="${idx}"]`)
+    el?.scrollIntoView({ block: "center", behavior: "smooth" })
+  }
+
+  // 점프 버튼: 현재 재생 중인(하이라이트) 줄로 이동
+  const scrollToActiveLine = () => {
+    if (activeLine < 0) return
+    const el = lyricsBoxRef.current?.querySelector(`[data-line="${activeLine}"]`)
+    el?.scrollIntoView({ block: "center", behavior: "smooth" })
+  }
 
   const showReading = (r?: string) => (r && lang === "ko" ? kanaToKo(r) : r)
 
@@ -236,6 +370,7 @@ export function LyricPlayer({
       return (
         <div
           key={i}
+          data-line={i}
           onClick={() => seekToLine(i)}
           className={cn(
             "cursor-pointer rounded-r-md border-l-2 border-accent pl-4 transition-all",
@@ -319,6 +454,7 @@ export function LyricPlayer({
     return (
       <div
         key={i}
+        data-line={i}
         onClick={() => seekToLine(i)}
         className={cn(
           "cursor-pointer rounded-md px-2 transition-all",
@@ -394,27 +530,36 @@ export function LyricPlayer({
         </div>
       </div>
 
-      {/* 레이어 토글 */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <LayerToggle on={showFurigana} onClick={() => setShowFurigana((v) => !v)}>
-          {L.furigana}
-        </LayerToggle>
-        <LayerToggle on={showPron} onClick={() => setShowPron((v) => !v)}>
-          {L.pron}
-        </LayerToggle>
-        <LayerToggle on={showMean} onClick={() => setShowMean((v) => !v)}>
-          {L.mean}
-        </LayerToggle>
-      </div>
-
       {!sync && L.guide && (
         <p className="mb-5 text-xs leading-relaxed text-muted-foreground/80">
           {L.guide}
         </p>
       )}
 
-      {/* 가사 */}
+      {/* 가사 (하얀 카드) */}
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm sm:p-8">
+        {/* 전체보기 + 영상 있을 때: sticky 미니 재생바 (스크롤해도 상단 고정) */}
+        {!sync && videoId && lines.length > 0 && (
+          <PlaybackBar
+            playerRef={playerRef}
+            onScrub={scrollToTime}
+            onJump={scrollToActiveLine}
+          />
+        )}
+        {/* 레이어 토글 — 카드 우측 상단 */}
+        {lines.length > 0 && (
+          <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+            <LayerToggle on={showFurigana} onClick={() => setShowFurigana((v) => !v)}>
+              {L.furigana}
+            </LayerToggle>
+            <LayerToggle on={showPron} onClick={() => setShowPron((v) => !v)}>
+              {L.pron}
+            </LayerToggle>
+            <LayerToggle on={showMean} onClick={() => setShowMean((v) => !v)}>
+              {L.mean}
+            </LayerToggle>
+          </div>
+        )}
         {!lines.length ? (
           <p className="text-muted-foreground">{L.empty}</p>
         ) : sync ? (
@@ -431,7 +576,10 @@ export function LyricPlayer({
             )}
           </div>
         ) : (
-          <div className={cn("flex flex-col", teaching ? "gap-6" : "gap-2")}>
+          <div
+            ref={lyricsBoxRef}
+            className={cn("flex flex-col", teaching ? "gap-6" : "gap-2")}
+          >
             {lines.map((line, i) =>
               renderLine(line, i, { current: i === activeLine, big: false }),
             )}

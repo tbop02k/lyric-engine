@@ -67,6 +67,7 @@ declare function LyricPlayer({ lines: rawLines, timings, videoId, videoFallback,
 type YTPlayer = {
     getCurrentTime: () => number;
     getDuration: () => number;
+    getPlayerState: () => number;
     seekTo: (seconds: number, allowSeekAhead: boolean) => void;
     playVideo: () => void;
     pauseVideo: () => void;

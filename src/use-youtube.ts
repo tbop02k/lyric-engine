@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react"
 export type YTPlayer = {
   getCurrentTime: () => number
   getDuration: () => number
+  getPlayerState: () => number
   seekTo: (seconds: number, allowSeekAhead: boolean) => void
   playVideo: () => void
   pauseVideo: () => void

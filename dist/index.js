@@ -1,6 +1,7 @@
 // src/LyricPlayer.tsx
 import {
   useEffect as useEffect2,
+  useRef as useRef2,
   useState as useState2
 } from "react";
 import { createPortal } from "react-dom";
@@ -2800,6 +2801,104 @@ function LayerToggle({
     }
   );
 }
+function fmt(s) {
+  if (!Number.isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const ss = Math.floor(s % 60).toString().padStart(2, "0");
+  return `${m}:${ss}`;
+}
+function PlaybackBar({
+  playerRef,
+  onScrub,
+  onJump
+}) {
+  const [cur, setCur] = useState2(0);
+  const [dur, setDur] = useState2(0);
+  const [playing, setPlaying] = useState2(false);
+  const seekingRef = useRef2(false);
+  const valRef = useRef2(0);
+  useEffect2(() => {
+    const id = window.setInterval(() => {
+      const p = playerRef.current;
+      if (!p) return;
+      if (!seekingRef.current) setCur(p.getCurrentTime?.() ?? 0);
+      setDur(p.getDuration?.() ?? 0);
+      setPlaying((p.getPlayerState?.() ?? -1) === 1);
+    }, 250);
+    return () => window.clearInterval(id);
+  }, [playerRef]);
+  const toggle = () => {
+    const p = playerRef.current;
+    if (!p) return;
+    if (playing) p.pauseVideo?.();
+    else p.playVideo?.();
+  };
+  const onSeek = (v) => {
+    valRef.current = v;
+    setCur(v);
+    playerRef.current?.seekTo?.(v, true);
+  };
+  const commitScrub = () => {
+    seekingRef.current = false;
+    onScrub?.(valRef.current);
+  };
+  return /* @__PURE__ */ jsxs("div", { className: "sticky top-14 z-10 -mx-6 -mt-6 mb-4 flex items-center gap-3 rounded-t-xl border-b border-border bg-card/95 px-6 py-2.5 backdrop-blur sm:-mx-8 sm:-mt-8 sm:px-8 lg:top-3", children: [
+    /* @__PURE__ */ jsx(
+      "button",
+      {
+        type: "button",
+        onClick: toggle,
+        "aria-label": playing ? "\uC77C\uC2DC\uC815\uC9C0" : "\uC7AC\uC0DD",
+        className: "inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90",
+        children: playing ? /* @__PURE__ */ jsx("svg", { viewBox: "0 0 24 24", className: "size-4", fill: "currentColor", children: /* @__PURE__ */ jsx("path", { d: "M6 5h4v14H6zM14 5h4v14h-4z" }) }) : /* @__PURE__ */ jsx("svg", { viewBox: "0 0 24 24", className: "size-4", fill: "currentColor", children: /* @__PURE__ */ jsx("path", { d: "M8 5v14l11-7z" }) })
+      }
+    ),
+    /* @__PURE__ */ jsx("span", { className: "w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground", children: fmt(cur) }),
+    /* @__PURE__ */ jsx(
+      "input",
+      {
+        type: "range",
+        min: 0,
+        max: dur || 0,
+        step: 0.1,
+        value: Math.min(cur, dur || 0),
+        onPointerDown: () => seekingRef.current = true,
+        onPointerUp: commitScrub,
+        onKeyUp: commitScrub,
+        onChange: (e) => onSeek(Number(e.target.value)),
+        "aria-label": "\uC7AC\uC0DD \uC704\uCE58",
+        className: "h-1.5 flex-1 cursor-pointer accent-primary"
+      }
+    ),
+    /* @__PURE__ */ jsx("span", { className: "w-9 shrink-0 text-xs tabular-nums text-muted-foreground", children: fmt(dur) }),
+    onJump && /* @__PURE__ */ jsx(
+      "button",
+      {
+        type: "button",
+        onClick: onJump,
+        "aria-label": "\uD604\uC7AC \uAC00\uC0AC\uB85C \uC774\uB3D9",
+        title: "\uD604\uC7AC \uAC00\uC0AC\uB85C \uC774\uB3D9",
+        className: "inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary",
+        children: /* @__PURE__ */ jsxs(
+          "svg",
+          {
+            viewBox: "0 0 24 24",
+            className: "size-4",
+            fill: "none",
+            stroke: "currentColor",
+            strokeWidth: 2,
+            strokeLinecap: "round",
+            children: [
+              /* @__PURE__ */ jsx("circle", { cx: "12", cy: "12", r: "7" }),
+              /* @__PURE__ */ jsx("path", { d: "M12 2v3M12 19v3M2 12h3M19 12h3" }),
+              /* @__PURE__ */ jsx("circle", { cx: "12", cy: "12", r: "1.6", fill: "currentColor", stroke: "none" })
+            ]
+          }
+        )
+      }
+    )
+  ] });
+}
 function Word({
   tok,
   reading,
@@ -2850,6 +2949,19 @@ function LyricPlayer({
   const sync = mode === "sync";
   const lines = withTimings(rawLines, timings);
   const { hostRef, playerRef, ready } = useYouTube(videoId);
+  const lyricsBoxRef = useRef2(null);
+  const scrollToTime = (sec) => {
+    const dur = playerRef.current?.getDuration?.() ?? 0;
+    const idx = activeIndexAt(lines, sec, dur);
+    if (idx < 0) return;
+    const el = lyricsBoxRef.current?.querySelector(`[data-line="${idx}"]`);
+    el?.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
+  const scrollToActiveLine = () => {
+    if (activeLine < 0) return;
+    const el = lyricsBoxRef.current?.querySelector(`[data-line="${activeLine}"]`);
+    el?.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
   const showReading = (r2) => r2 && lang === "ko" ? kanaToKo(r2) : r2;
   useEffect2(() => {
     setActiveLine(-1);
@@ -2915,6 +3027,7 @@ function LyricPlayer({
       return /* @__PURE__ */ jsxs(
         "div",
         {
+          "data-line": i,
           onClick: () => seekToLine(i),
           className: cn(
             "cursor-pointer rounded-r-md border-l-2 border-accent pl-4 transition-all",
@@ -2998,6 +3111,7 @@ function LyricPlayer({
     return /* @__PURE__ */ jsxs(
       "div",
       {
+        "data-line": i,
         onClick: () => seekToLine(i),
         className: cn(
           "cursor-pointer rounded-md px-2 transition-all",
@@ -3052,18 +3166,35 @@ function LyricPlayer({
         }
       )
     ] }) }),
-    /* @__PURE__ */ jsxs("div", { className: "mb-4 flex flex-wrap items-center gap-2", children: [
-      /* @__PURE__ */ jsx(LayerToggle, { on: showFurigana, onClick: () => setShowFurigana((v) => !v), children: L.furigana }),
-      /* @__PURE__ */ jsx(LayerToggle, { on: showPron, onClick: () => setShowPron((v) => !v), children: L.pron }),
-      /* @__PURE__ */ jsx(LayerToggle, { on: showMean, onClick: () => setShowMean((v) => !v), children: L.mean })
-    ] }),
     !sync && L.guide && /* @__PURE__ */ jsx("p", { className: "mb-5 text-xs leading-relaxed text-muted-foreground/80", children: L.guide }),
-    /* @__PURE__ */ jsx("div", { className: "rounded-xl border border-border bg-card p-6 shadow-sm sm:p-8", children: !lines.length ? /* @__PURE__ */ jsx("p", { className: "text-muted-foreground", children: L.empty }) : sync ? /* @__PURE__ */ jsx("div", { className: "flex min-h-[180px] flex-col justify-center", children: activeLine >= 0 && lines[activeLine] ? renderLine(lines[activeLine], activeLine, {
-      current: true,
-      big: true
-    }) : /* @__PURE__ */ jsx("p", { className: "py-6 text-center text-muted-foreground", children: L.syncPlaceholder }) }) : /* @__PURE__ */ jsx("div", { className: cn("flex flex-col", teaching ? "gap-6" : "gap-2"), children: lines.map(
-      (line, i) => renderLine(line, i, { current: i === activeLine, big: false })
-    ) }) }),
+    /* @__PURE__ */ jsxs("div", { className: "rounded-xl border border-border bg-card p-6 shadow-sm sm:p-8", children: [
+      !sync && videoId && lines.length > 0 && /* @__PURE__ */ jsx(
+        PlaybackBar,
+        {
+          playerRef,
+          onScrub: scrollToTime,
+          onJump: scrollToActiveLine
+        }
+      ),
+      lines.length > 0 && /* @__PURE__ */ jsxs("div", { className: "mb-4 flex flex-wrap items-center justify-end gap-2", children: [
+        /* @__PURE__ */ jsx(LayerToggle, { on: showFurigana, onClick: () => setShowFurigana((v) => !v), children: L.furigana }),
+        /* @__PURE__ */ jsx(LayerToggle, { on: showPron, onClick: () => setShowPron((v) => !v), children: L.pron }),
+        /* @__PURE__ */ jsx(LayerToggle, { on: showMean, onClick: () => setShowMean((v) => !v), children: L.mean })
+      ] }),
+      !lines.length ? /* @__PURE__ */ jsx("p", { className: "text-muted-foreground", children: L.empty }) : sync ? /* @__PURE__ */ jsx("div", { className: "flex min-h-[180px] flex-col justify-center", children: activeLine >= 0 && lines[activeLine] ? renderLine(lines[activeLine], activeLine, {
+        current: true,
+        big: true
+      }) : /* @__PURE__ */ jsx("p", { className: "py-6 text-center text-muted-foreground", children: L.syncPlaceholder }) }) : /* @__PURE__ */ jsx(
+        "div",
+        {
+          ref: lyricsBoxRef,
+          className: cn("flex flex-col", teaching ? "gap-6" : "gap-2"),
+          children: lines.map(
+            (line, i) => renderLine(line, i, { current: i === activeLine, big: false })
+          )
+        }
+      )
+    ] }),
     tip && createPortal(
       /* @__PURE__ */ jsxs(
         "div",
