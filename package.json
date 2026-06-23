@@ -1,0 +1,34 @@
+{
+  "name": "lyric-engine",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Lyrica/neu 공통 가사 플레이어 엔진 (후리가나·발음·모드·동기화)",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "clsx": "^2.1.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^2.6.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0"
+  }
+}
