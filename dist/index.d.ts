@@ -33,7 +33,6 @@ declare function activeIndexAt(lines: LyricLine[], now: number, _duration?: numb
 declare function withTimings(lines: LyricLine[], tArr?: number[]): LyricLine[];
 
 type LyricLabels = {
-    jp: string;
     furigana: string;
     pron: string;
     mean: string;

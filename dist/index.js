@@ -2772,7 +2772,6 @@ function useYouTube(videoId) {
 // src/LyricPlayer.tsx
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 var DEFAULT_LABELS = {
-  jp: "\uC77C\uBCF8\uC5B4 \uAC00\uC0AC",
   furigana: "\uD6C4\uB9AC\uAC00\uB098",
   pron: "\uD55C\uAD6D\uC5B4 \uBC1C\uC74C",
   mean: "\uD55C\uAD6D\uC5B4 \uB73B",
@@ -3054,7 +3053,6 @@ function LyricPlayer({
       )
     ] }) }),
     /* @__PURE__ */ jsxs("div", { className: "mb-4 flex flex-wrap items-center gap-2", children: [
-      /* @__PURE__ */ jsx("span", { className: "rounded-md bg-accent px-2.5 py-1 text-xs text-accent-foreground", children: L.jp }),
       /* @__PURE__ */ jsx(LayerToggle, { on: showFurigana, onClick: () => setShowFurigana((v) => !v), children: L.furigana }),
       /* @__PURE__ */ jsx(LayerToggle, { on: showPron, onClick: () => setShowPron((v) => !v), children: L.pron }),
       /* @__PURE__ */ jsx(LayerToggle, { on: showMean, onClick: () => setShowMean((v) => !v), children: L.mean })

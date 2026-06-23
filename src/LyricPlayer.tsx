@@ -28,7 +28,6 @@ type Tip = {
 } | null
 
 export type LyricLabels = {
-  jp: string
   furigana: string
   pron: string
   mean: string
@@ -40,7 +39,6 @@ export type LyricLabels = {
 }
 
 const DEFAULT_LABELS: LyricLabels = {
-  jp: "일본어 가사",
   furigana: "후리가나",
   pron: "한국어 발음",
   mean: "한국어 뜻",
@@ -398,9 +396,6 @@ export function LyricPlayer({
 
       {/* 레이어 토글 */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="rounded-md bg-accent px-2.5 py-1 text-xs text-accent-foreground">
-          {L.jp}
-        </span>
         <LayerToggle on={showFurigana} onClick={() => setShowFurigana((v) => !v)}>
           {L.furigana}
         </LayerToggle>
