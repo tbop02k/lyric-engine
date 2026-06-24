@@ -2997,6 +2997,15 @@ function LyricPlayer({
     const k = vocal.findIndex((x) => x.idx === i);
     if (k >= 0) p.seekTo(k / vocal.length * dur, true);
   }
+  function gotoLine(dir) {
+    const vocal = lines.map((l, idx) => ({ l, idx })).filter((x) => isVocal(x.l)).map((x) => x.idx);
+    if (!vocal.length) return;
+    const pos = vocal.indexOf(activeLine);
+    const nextPos = pos < 0 ? 0 : Math.min(Math.max(pos + dir, 0), vocal.length - 1);
+    const target = vocal[nextPos];
+    setActiveLine(target);
+    seekToLine(target);
+  }
   function showTip(el, r2, m) {
     if (!r2 && !m) return;
     const rect = el.getBoundingClientRect();
@@ -3189,10 +3198,56 @@ function LyricPlayer({
         /* @__PURE__ */ jsx(LayerToggle, { on: showPron, onClick: () => setShowPron((v) => !v), children: L.pron }),
         /* @__PURE__ */ jsx(LayerToggle, { on: showMean, onClick: () => setShowMean((v) => !v), children: L.mean })
       ] }),
-      !lines.length ? /* @__PURE__ */ jsx("p", { className: "text-muted-foreground", children: L.empty }) : sync ? /* @__PURE__ */ jsx("div", { className: "flex min-h-[180px] flex-col justify-center", children: activeLine >= 0 && lines[activeLine] ? renderLine(lines[activeLine], activeLine, {
-        current: true,
-        big: true
-      }) : /* @__PURE__ */ jsx("p", { className: "py-6 text-center text-muted-foreground", children: L.syncPlaceholder }) }) : /* @__PURE__ */ jsx(
+      !lines.length ? /* @__PURE__ */ jsx("p", { className: "text-muted-foreground", children: L.empty }) : sync ? /* @__PURE__ */ jsxs("div", { className: "flex min-h-[180px] items-center gap-1 sm:gap-3", children: [
+        /* @__PURE__ */ jsx(
+          "button",
+          {
+            type: "button",
+            onClick: () => gotoLine(-1),
+            "aria-label": "\uC774\uC804 \uC904",
+            className: "inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary",
+            children: /* @__PURE__ */ jsx(
+              "svg",
+              {
+                viewBox: "0 0 24 24",
+                className: "size-5",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: 2,
+                strokeLinecap: "round",
+                strokeLinejoin: "round",
+                children: /* @__PURE__ */ jsx("path", { d: "M15 18l-6-6 6-6" })
+              }
+            )
+          }
+        ),
+        /* @__PURE__ */ jsx("div", { className: "flex min-w-0 flex-1 flex-col justify-center", children: activeLine >= 0 && lines[activeLine] ? renderLine(lines[activeLine], activeLine, {
+          current: true,
+          big: true
+        }) : /* @__PURE__ */ jsx("p", { className: "py-6 text-center text-muted-foreground", children: L.syncPlaceholder }) }),
+        /* @__PURE__ */ jsx(
+          "button",
+          {
+            type: "button",
+            onClick: () => gotoLine(1),
+            "aria-label": "\uB2E4\uC74C \uC904",
+            className: "inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary",
+            children: /* @__PURE__ */ jsx(
+              "svg",
+              {
+                viewBox: "0 0 24 24",
+                className: "size-5",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: 2,
+                strokeLinecap: "round",
+                strokeLinejoin: "round",
+                children: /* @__PURE__ */ jsx("path", { d: "M9 18l6-6-6-6" })
+              }
+            )
+          }
+        )
+      ] }) : /* @__PURE__ */ jsx(
         "div",
         {
           ref: lyricsBoxRef,

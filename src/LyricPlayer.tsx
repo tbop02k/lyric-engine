@@ -326,6 +326,21 @@ export function LyricPlayer({
     if (k >= 0) p.seekTo((k / vocal.length) * dur, true)
   }
 
+  // 줄단위 모드: 이전/다음 보컬 줄로 이동 (영상이 있으면 그 줄로 seek)
+  function gotoLine(dir: -1 | 1) {
+    const vocal = lines
+      .map((l, idx) => ({ l, idx }))
+      .filter((x) => isVocal(x.l))
+      .map((x) => x.idx)
+    if (!vocal.length) return
+    const pos = vocal.indexOf(activeLine)
+    const nextPos =
+      pos < 0 ? 0 : Math.min(Math.max(pos + dir, 0), vocal.length - 1)
+    const target = vocal[nextPos]
+    setActiveLine(target)
+    seekToLine(target)
+  }
+
   function showTip(el: HTMLElement, r?: string, m?: string) {
     if (!r && !m) return
     const rect = el.getBoundingClientRect()
@@ -563,17 +578,55 @@ export function LyricPlayer({
         {!lines.length ? (
           <p className="text-muted-foreground">{L.empty}</p>
         ) : sync ? (
-          <div className="flex min-h-[180px] flex-col justify-center">
-            {activeLine >= 0 && lines[activeLine] ? (
-              renderLine(lines[activeLine], activeLine, {
-                current: true,
-                big: true,
-              })
-            ) : (
-              <p className="py-6 text-center text-muted-foreground">
-                {L.syncPlaceholder}
-              </p>
-            )}
+          <div className="flex min-h-[180px] items-center gap-1 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => gotoLine(-1)}
+              aria-label="이전 줄"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="size-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <div className="flex min-w-0 flex-1 flex-col justify-center">
+              {activeLine >= 0 && lines[activeLine] ? (
+                renderLine(lines[activeLine], activeLine, {
+                  current: true,
+                  big: true,
+                })
+              ) : (
+                <p className="py-6 text-center text-muted-foreground">
+                  {L.syncPlaceholder}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => gotoLine(1)}
+              aria-label="다음 줄"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="size-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
           </div>
         ) : (
           <div
