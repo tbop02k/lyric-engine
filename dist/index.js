@@ -2825,6 +2825,8 @@ function PlaybackBar({
   const [playing, setPlaying] = useState2(false);
   const seekingRef = useRef2(false);
   const valRef = useRef2(0);
+  const [vol, setVol] = useState2(100);
+  const [muted, setMuted] = useState2(false);
   useEffect2(() => {
     const id = window.setInterval(() => {
       const p = playerRef.current;
@@ -2834,6 +2836,14 @@ function PlaybackBar({
       setPlaying((p.getPlayerState?.() ?? -1) === 1);
     }, 250);
     return () => window.clearInterval(id);
+  }, [playerRef]);
+  useEffect2(() => {
+    const id = window.setTimeout(() => {
+      const p = playerRef.current;
+      if (p?.getVolume) setVol(Math.round(p.getVolume() ?? 100));
+      if (p?.isMuted) setMuted(!!p.isMuted());
+    }, 600);
+    return () => window.clearTimeout(id);
   }, [playerRef]);
   const toggle = () => {
     const p = playerRef.current;
@@ -2849,6 +2859,28 @@ function PlaybackBar({
   const commitScrub = () => {
     seekingRef.current = false;
     onScrub?.(valRef.current);
+  };
+  const changeVol = (v) => {
+    setVol(v);
+    setMuted(v === 0);
+    const p = playerRef.current;
+    p?.setVolume?.(v);
+    if (v === 0) p?.mute?.();
+    else p?.unMute?.();
+  };
+  const toggleMute = () => {
+    const p = playerRef.current;
+    if (!p) return;
+    if (muted || vol === 0) {
+      const v = vol === 0 ? 50 : vol;
+      setVol(v);
+      setMuted(false);
+      p.setVolume?.(v);
+      p.unMute?.();
+    } else {
+      setMuted(true);
+      p.mute?.();
+    }
   };
   return /* @__PURE__ */ jsxs("div", { className: "sticky top-14 z-10 -mx-6 -mt-6 mb-4 flex items-center gap-3 rounded-t-xl border-b border-border bg-card/95 px-6 py-2.5 backdrop-blur sm:-mx-8 sm:-mt-8 sm:px-8 lg:top-3", children: [
     /* @__PURE__ */ jsx(
@@ -2879,6 +2911,50 @@ function PlaybackBar({
       }
     ),
     /* @__PURE__ */ jsx("span", { className: "w-9 shrink-0 text-xs tabular-nums text-muted-foreground", children: fmt(dur) }),
+    /* @__PURE__ */ jsx(
+      "button",
+      {
+        type: "button",
+        onClick: toggleMute,
+        "aria-label": muted || vol === 0 ? "\uC74C\uC18C\uAC70 \uD574\uC81C" : "\uC74C\uC18C\uAC70",
+        className: "inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-primary",
+        children: muted || vol === 0 ? /* @__PURE__ */ jsxs("svg", { viewBox: "0 0 24 24", className: "size-4", fill: "none", children: [
+          /* @__PURE__ */ jsx("path", { d: "M11 5L6 9H3v6h3l5 4V5z", fill: "currentColor" }),
+          /* @__PURE__ */ jsx(
+            "path",
+            {
+              d: "M16 9l5 6m0-6l-5 6",
+              stroke: "currentColor",
+              strokeWidth: 1.8,
+              strokeLinecap: "round"
+            }
+          )
+        ] }) : /* @__PURE__ */ jsxs("svg", { viewBox: "0 0 24 24", className: "size-4", fill: "none", children: [
+          /* @__PURE__ */ jsx("path", { d: "M11 5L6 9H3v6h3l5 4V5z", fill: "currentColor" }),
+          /* @__PURE__ */ jsx(
+            "path",
+            {
+              d: "M15.5 8.5a5 5 0 010 7",
+              stroke: "currentColor",
+              strokeWidth: 1.8,
+              strokeLinecap: "round"
+            }
+          )
+        ] })
+      }
+    ),
+    /* @__PURE__ */ jsx(
+      "input",
+      {
+        type: "range",
+        min: 0,
+        max: 100,
+        value: muted ? 0 : vol,
+        onChange: (e) => changeVol(Number(e.target.value)),
+        "aria-label": "\uC74C\uB7C9",
+        className: "hidden h-1 w-16 cursor-pointer accent-primary sm:block"
+      }
+    ),
     onJump && /* @__PURE__ */ jsx(
       "button",
       {
@@ -3185,12 +3261,12 @@ function LyricPlayer({
     ] }) }),
     !sync && L.guide && /* @__PURE__ */ jsx("p", { className: "mb-5 text-xs leading-relaxed text-muted-foreground/80", children: L.guide }),
     /* @__PURE__ */ jsxs("div", { className: "rounded-xl border border-border bg-card p-6 shadow-sm sm:p-8", children: [
-      !sync && videoId && lines.length > 0 && /* @__PURE__ */ jsx(
+      videoId && lines.length > 0 && /* @__PURE__ */ jsx(
         PlaybackBar,
         {
           playerRef,
-          onScrub: scrollToTime,
-          onJump: scrollToActiveLine
+          onScrub: sync ? void 0 : scrollToTime,
+          onJump: sync ? void 0 : scrollToActiveLine
         }
       ),
       lines.length > 0 && /* @__PURE__ */ jsxs("div", { className: "mb-4 flex flex-wrap items-center justify-end gap-2", children: [

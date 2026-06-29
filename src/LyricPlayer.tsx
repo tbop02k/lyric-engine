@@ -121,6 +121,8 @@ function PlaybackBar({
   const [playing, setPlaying] = useState(false)
   const seekingRef = useRef(false)
   const valRef = useRef(0)
+  const [vol, setVol] = useState(100)
+  const [muted, setMuted] = useState(false)
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -131,6 +133,16 @@ function PlaybackBar({
       setPlaying((p.getPlayerState?.() ?? -1) === 1)
     }, 250)
     return () => window.clearInterval(id)
+  }, [playerRef])
+
+  // 플레이어 준비되면 현재 음량/음소거 상태 반영
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      const p = playerRef.current
+      if (p?.getVolume) setVol(Math.round(p.getVolume() ?? 100))
+      if (p?.isMuted) setMuted(!!p.isMuted())
+    }, 600)
+    return () => window.clearTimeout(id)
   }, [playerRef])
 
   const toggle = () => {
@@ -148,6 +160,29 @@ function PlaybackBar({
   const commitScrub = () => {
     seekingRef.current = false
     onScrub?.(valRef.current)
+  }
+
+  const changeVol = (v: number) => {
+    setVol(v)
+    setMuted(v === 0)
+    const p = playerRef.current
+    p?.setVolume?.(v)
+    if (v === 0) p?.mute?.()
+    else p?.unMute?.()
+  }
+  const toggleMute = () => {
+    const p = playerRef.current
+    if (!p) return
+    if (muted || vol === 0) {
+      const v = vol === 0 ? 50 : vol
+      setVol(v)
+      setMuted(false)
+      p.setVolume?.(v)
+      p.unMute?.()
+    } else {
+      setMuted(true)
+      p.mute?.()
+    }
   }
 
   return (
@@ -187,6 +222,43 @@ function PlaybackBar({
       <span className="w-9 shrink-0 text-xs tabular-nums text-muted-foreground">
         {fmt(dur)}
       </span>
+      <button
+        type="button"
+        onClick={toggleMute}
+        aria-label={muted || vol === 0 ? "음소거 해제" : "음소거"}
+        className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-primary"
+      >
+        {muted || vol === 0 ? (
+          <svg viewBox="0 0 24 24" className="size-4" fill="none">
+            <path d="M11 5L6 9H3v6h3l5 4V5z" fill="currentColor" />
+            <path
+              d="M16 9l5 6m0-6l-5 6"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              strokeLinecap="round"
+            />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" className="size-4" fill="none">
+            <path d="M11 5L6 9H3v6h3l5 4V5z" fill="currentColor" />
+            <path
+              d="M15.5 8.5a5 5 0 010 7"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              strokeLinecap="round"
+            />
+          </svg>
+        )}
+      </button>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={muted ? 0 : vol}
+        onChange={(e) => changeVol(Number(e.target.value))}
+        aria-label="음량"
+        className="hidden h-1 w-16 cursor-pointer accent-primary sm:block"
+      />
       {onJump && (
         <button
           type="button"
@@ -554,11 +626,11 @@ export function LyricPlayer({
       {/* 가사 (하얀 카드) */}
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm sm:p-8">
         {/* 전체보기 + 영상 있을 때: sticky 미니 재생바 (스크롤해도 상단 고정) */}
-        {!sync && videoId && lines.length > 0 && (
+        {videoId && lines.length > 0 && (
           <PlaybackBar
             playerRef={playerRef}
-            onScrub={scrollToTime}
-            onJump={scrollToActiveLine}
+            onScrub={sync ? undefined : scrollToTime}
+            onJump={sync ? undefined : scrollToActiveLine}
           />
         )}
         {/* 레이어 토글 — 카드 우측 상단 */}

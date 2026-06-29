@@ -7,6 +7,11 @@ export type YTPlayer = {
   seekTo: (seconds: number, allowSeekAhead: boolean) => void
   playVideo: () => void
   pauseVideo: () => void
+  setVolume: (volume: number) => void
+  getVolume: () => number
+  mute: () => void
+  unMute: () => void
+  isMuted: () => boolean
   destroy: () => void
 }
 
